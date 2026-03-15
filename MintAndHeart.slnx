@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MintAndHeart.Client/MintAndHeart.Client.csproj" />
+    <Project Path="src/MintAndHeart.Server/MintAndHeart.Server.csproj" />
+    <Project Path="src/MintAndHeart.Shared/MintAndHeart.Shared.csproj" />
+  </Folder>
+</Solution>
