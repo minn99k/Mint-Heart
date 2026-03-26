@@ -1,7 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\MintAndHeart.Shared\MintAndHeart.Shared.csproj" />
+    <ProjectReference Include="..\MintAndHeart.Client\MintAndHeart.Client.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
