@@ -22,6 +22,8 @@ public class Program
         });
 
         builder.Services.AddSignalR(); // Add SignalR service
+        
+
         var app = builder.Build();
 
         // Must be after Routing, before Endpoints
