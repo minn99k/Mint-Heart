@@ -22,7 +22,7 @@ public class Program
         });
 
         builder.Services.AddSignalR(); // Add SignalR service
-        
+
 
         var app = builder.Build();
 
@@ -32,11 +32,11 @@ public class Program
         app.UseBlazorFrameworkFiles();
         app.UseStaticFiles();
 
-        app.MapFallbackToFile("index.html");
-
         app.MapHub<GameHub>("/gamehub"); // Map the GameHub to the /gamehub endpoint
         // GameHub: Handle game logic and communication between clients
         // TODO: Add other endpoints here
+        
+        app.MapFallbackToFile("index.html");
 
         app.Run();
     }
