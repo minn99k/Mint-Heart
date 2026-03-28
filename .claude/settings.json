@@ -1,12 +1,18 @@
 {
   "permissions": {
     "allow": [
+      "Edit",
+      "Write",
       "Bash(curl -s http://localhost:5080/)",
       "Bash(taskkill /F /IM \"MintAndHeart.Server.exe\")",
       "Bash(taskkill //F //IM \"MintAndHeart.Server.exe\")",
       "Bash(curl -s \"http://localhost:5000/\")",
       "Bash(curl -v \"http://localhost:5000/\")",
-      "Bash(curl -v \"http://localhost:5080/\")"
+      "Bash(curl -v \"http://localhost:5080/\")",
+      "Read(//c/Users/sswoo/AppData/Roaming/Cursor/User/**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\sswoo\\AppData\\Roaming\\Cursor\\User"
     ]
   }
 }
