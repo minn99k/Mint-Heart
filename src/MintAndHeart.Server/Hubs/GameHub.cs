@@ -8,6 +8,7 @@ namespace MintAndHeart.Server.Hubs
         public async Task Ping(){
             Console.WriteLine($"Ping received from: {Context.ConnectionId}");
             await Clients.Caller.SendAsync("Pong", "Responed Messeage from Server!");
+            // Clients.Caller: 이 메서드를 호출한 클라이언트에게만 응답
         }
         // Leave it empty for now!
         // TODO: Add functions like "create room", "send units" later.
