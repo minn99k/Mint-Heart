@@ -1,0 +1,16 @@
+@page "/testhub"
+@inject GameHubService gameHubService
+
+<h3>SignalR 연결 테스트</h3>
+<button @onclick="Connect">연결</button>
+<p>@_status</p>
+
+@code {
+    private string _status = "연결 안 됨";
+
+    private async Task Connect()
+    {
+        await gameHubService.StartAsync();
+        _status = "연결됨!";
+    }
+}

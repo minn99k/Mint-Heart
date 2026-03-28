@@ -3,7 +3,10 @@
     "allow": [
       "Bash(curl -s http://localhost:5080/)",
       "Bash(taskkill /F /IM \"MintAndHeart.Server.exe\")",
-      "Bash(taskkill //F //IM \"MintAndHeart.Server.exe\")"
+      "Bash(taskkill //F //IM \"MintAndHeart.Server.exe\")",
+      "Bash(curl -s \"http://localhost:5000/\")",
+      "Bash(curl -v \"http://localhost:5000/\")",
+      "Bash(curl -v \"http://localhost:5080/\")"
     ]
   }
 }
