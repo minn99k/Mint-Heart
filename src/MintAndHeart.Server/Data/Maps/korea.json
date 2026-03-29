@@ -1,0 +1,27 @@
+{
+  "mapId": "korea",
+  "mapName": "대한민국",
+  "description": "서울에서 부산까지, 한반도 영토 전쟁",
+  "width": 800,
+  "height": 600,
+  "unitSpeed": 150,
+  "nodes": [
+    { "id": "seoul",     "name": "서울", "x": 300, "y": 150, "initialUnits": 10, "maxUnits": 30, "isCapital": false },
+    { "id": "incheon",   "name": "인천", "x": 180, "y": 170, "initialUnits": 3,  "maxUnits": 15, "isCapital": false },
+    { "id": "chuncheon", "name": "춘천", "x": 350, "y": 80,  "initialUnits": 3,  "maxUnits": 15, "isCapital": false },
+    { "id": "gangneung", "name": "강릉", "x": 550, "y": 90,  "initialUnits": 2,  "maxUnits": 10, "isCapital": false },
+    { "id": "cheongju",  "name": "청주", "x": 350, "y": 250, "initialUnits": 3,  "maxUnits": 15, "isCapital": false },
+    { "id": "daejeon",   "name": "대전", "x": 280, "y": 350, "initialUnits": 4,  "maxUnits": 20, "isCapital": false },
+    { "id": "jeonju",    "name": "전주", "x": 220, "y": 400, "initialUnits": 3,  "maxUnits": 15, "isCapital": false },
+    { "id": "gwangju",   "name": "광주", "x": 200, "y": 490, "initialUnits": 3,  "maxUnits": 15, "isCapital": false },
+    { "id": "daegu",     "name": "대구", "x": 500, "y": 350, "initialUnits": 4,  "maxUnits": 20, "isCapital": false },
+    { "id": "ulsan",     "name": "울산", "x": 600, "y": 380, "initialUnits": 3,  "maxUnits": 15, "isCapital": false },
+    { "id": "busan",     "name": "부산", "x": 550, "y": 480, "initialUnits": 10, "maxUnits": 30, "isCapital": false },
+    { "id": "jeju",      "name": "제주", "x": 200, "y": 580, "initialUnits": 2,  "maxUnits": 10, "isCapital": false }
+  ],
+  "spawnPoints": {
+    "player1": "seoul",
+    "player2": "busan"
+  },
+  "playerStartUnits": 10
+}
