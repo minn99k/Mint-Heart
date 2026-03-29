@@ -1,5 +1,6 @@
 // This file is the entry point for the server
 using MintAndHeart.Server.Hubs;
+using MintAndHeart.Server.Services;
 
 namespace MintAndHeart.Server;
 
@@ -22,6 +23,7 @@ public class Program
         });
 
         builder.Services.AddSignalR(); // Add SignalR service
+        builder.Services.AddSingleton<RoomService>();
 
 
         var app = builder.Build();
