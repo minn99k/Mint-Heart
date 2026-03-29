@@ -3,14 +3,28 @@
 
 <h3>SignalR 연결 테스트</h3>
 <button @onclick="Connect">연결</button>
+<button @onclick="SendPing" disabled="@(!_connected)">Ping 보내기</button>
 <p>@_status</p>
 
 @code {
     private string _status = "Not Connected";
+    private bool _connected = false;
 
-    private async Task Connect()
-    {
+    private async Task Connect(){
+        gameHubService.OnPong(message =>{
+            _status = $"Pong 받음: {message}";
+            StateHasChanged(); // UI 갱신을 수동으로 호출
+            // 왜 수동? → SignalR 콜백은 Blazor 외부에서 발생하는 이벤트라
+            // Blazor가 자동 감지 못 함. 버튼 클릭은 자동인데 이건 아님.
+        });
+    
         await gameHubService.StartAsync();
         _status = "연결됨!";
+        _connected = true;
+    }
+    private async Task SendPing()
+    {
+        await gameHubService.SendPingAsync();
+        _status = "Ping 보냄, Pong 대기 중...";
     }
 }
