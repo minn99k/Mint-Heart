@@ -1,0 +1,33 @@
+@* 맵의 노드 하나를 SVG로 렌더링하는 컴포넌트
+   왜 별도 컴포넌트로 분리했나?
+   → Blazor 제약: SVG <text> 요소를 @foreach 코드 블록 안에 직접 쓰면
+     Razor 파서가 자신의 <text> 태그와 혼동해서 RZ1023 오류가 발생함
+   → 별도 .razor 파일의 최상위 마크업에 두면 이 제약이 없음
+
+   이 컴포넌트를 TestMap.razor에서 @foreach 안에서 호출하면 정상 작동함 *@
+
+@* 원 *@
+<circle cx="@Cx" cy="@Cy" r="22"
+        fill="@Fill" stroke="#333" stroke-width="1.5" />
+
+@* 원 안: 초기 유닛 수 *@
+<text x="@Cx" y="@UnitY"
+      text-anchor="middle" dominant-baseline="middle"
+      font-size="13" fill="white" font-weight="bold">@Units</text>
+
+@* 원 아래: 노드 이름 *@
+<text x="@Cx" y="@LabelY"
+      text-anchor="middle" font-size="12" fill="#333">@Name</text>
+
+@code {
+    // [Parameter]: 부모 컴포넌트(TestMap.razor)에서 값을 전달받는 속성
+    // 왜 string으로 좌표를 받나? → SVG 속성값은 문자열이라 이미 F0 포맷 적용된 채로 받음
+
+    [Parameter] public string Cx { get; set; } = "0";
+    [Parameter] public string Cy { get; set; } = "0";
+    [Parameter] public string UnitY { get; set; } = "0";
+    [Parameter] public string LabelY { get; set; } = "0";
+    [Parameter] public string Fill { get; set; } = "#7f8c8d";
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public int Units { get; set; }
+}

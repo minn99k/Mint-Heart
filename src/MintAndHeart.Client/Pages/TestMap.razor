@@ -1,0 +1,88 @@
+@page "/testmap"
+
+@* HttpClient: 서버에 HTTP 요청을 보내는 객체. Client/Program.cs에서 DI 등록됨 *@
+@inject HttpClient Http
+
+<h3>맵 렌더링 테스트</h3>
+
+@* 로딩 중 / 에러 / 정상 상태를 분기해서 표시 *@
+@if (_errorMessage != null)
+{
+    <p style="color:red">오류: @_errorMessage</p>
+}
+else if (_map == null)
+{
+    <p>맵 데이터 불러오는 중...</p>
+}
+else
+{
+    @* @() 괄호로 감싸야 파서가 한국어를 식별자로 오해하지 않음 *@
+    <p>맵: @_map.MapName (@(_map.Nodes.Count)개 노드, 유닛 속도: @_map.UnitSpeed px/초)</p>
+
+    @* SVG로 맵을 렌더링
+       viewBox="0 0 800 600" → 맵 설계 기준 좌표계 (width x height)
+       왜 viewBox? → 브라우저 창 크기와 무관하게 내부 좌표계를 고정할 수 있음
+                     실제 표시 크기는 style의 width/height로 따로 조절 가능 *@
+    <svg viewBox="0 0 @_map.Width @_map.Height"
+         style="width:800px; height:600px; border:1px solid #ccc; background:#f9f9f9;">
+
+        @* 노드 렌더링
+           왜 MapNodeSvg 컴포넌트를 쓰나?
+           → Blazor 제약: SVG <text>를 @foreach 코드 블록 안에 직접 쓰면 파서 오류(RZ1023)
+           → 별도 컴포넌트로 분리하면 해당 제약 없이 정상 동작 *@
+        @foreach (var node in _map.Nodes)
+        {
+            var fillColor = GetNodeColor(node.Id);
+            var cx        = node.X.ToString("F0");
+            var cy        = node.Y.ToString("F0");
+            var unitTextY = (node.Y + 5).ToString("F0");
+            var labelY    = (node.Y + 38).ToString("F0");
+
+            <MapNodeSvg Cx="@cx" Cy="@cy" UnitY="@unitTextY" LabelY="@labelY"
+                        Fill="@fillColor" Name="@node.Name" Units="@node.InitialUnits" />
+        }
+    </svg>
+
+    @* 범례 *@
+    <div style="margin-top:12px; display:flex; gap:16px; font-size:13px;">
+        <span><span style="display:inline-block;width:14px;height:14px;background:#4a90d9;border-radius:50%;vertical-align:middle;"></span> Player 1 시작</span>
+        <span><span style="display:inline-block;width:14px;height:14px;background:#e74c3c;border-radius:50%;vertical-align:middle;"></span> Player 2 시작</span>
+        <span><span style="display:inline-block;width:14px;height:14px;background:#7f8c8d;border-radius:50%;vertical-align:middle;"></span> 중립 (숫자 = 초기 유닛)</span>
+    </div>
+}
+
+@code {
+    // null = 아직 로딩 중, 값이 있으면 로딩 완료
+    private MapData? _map;
+    private string? _errorMessage;
+
+    // OnInitializedAsync: Blazor 컴포넌트가 화면에 처음 나타날 때 자동으로 호출되는 생명주기 메서드
+    // 왜 여기서 데이터를 불러오나? → 버튼 클릭 없이 페이지 진입 시 자동 로드하려고
+    // async Task로 선언 → HTTP 요청이 완료될 때까지 기다림 (비동기)
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // GetFromJsonAsync<T>: HTTP GET 요청 후 응답 JSON을 T 타입으로 자동 역직렬화
+            // "/api/maps/korea" → 서버의 Program.cs에 등록한 엔드포인트
+            _map = await Http.GetFromJsonAsync<MapData>("/api/maps/korea");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+
+    // 노드 ID를 받아서 색상 문자열을 반환하는 헬퍼 메서드
+    // SpawnPoints 딕셔너리: { "player1": "seoul", "player2": "busan" }
+    private string GetNodeColor(string nodeId)
+    {
+        if (_map?.SpawnPoints.TryGetValue("player1", out var p1) == true && p1 == nodeId)
+            return "#4a90d9"; // 파랑 - Player 1 시작 노드
+
+        if (_map?.SpawnPoints.TryGetValue("player2", out var p2) == true && p2 == nodeId)
+            return "#e74c3c"; // 빨강 - Player 2 시작 노드
+
+        return "#7f8c8d"; // 회색 - 중립 노드
+    }
+}
