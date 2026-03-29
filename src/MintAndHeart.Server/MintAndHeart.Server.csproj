@@ -15,4 +15,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- Data/Maps/ 폴더의 JSON 파일들을 빌드 출력 폴더에 그대로 복사 -->
+  <!-- 왜 필요? → MapLoader가 실행 시 파일을 읽는데, 빌드 후 실행 폴더에 파일이 없으면 못 찾음 -->
+  <!-- CopyToOutputDirectory: PreserveNewest → 파일이 바뀔 때만 복사 (Always보다 빠름) -->
+  <ItemGroup>
+    <Content Update="Data\Maps\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
