@@ -1,33 +1,59 @@
 using Microsoft.AspNetCore.SignalR;
 using MintAndHeart.Server.Services;
 
-namespace MintAndHeart.Server.Hubs{
-    // This class is the 'channel' that the client and server can communicate through
-    public class GameHub : Hub{
-        private readonly RoomService _roomService;
+namespace MintAndHeart.Server.Hubs;
 
-        public GameHub(RoomService roomService){
-            _roomService = roomService;
-        }
-        public override async Task OnConnectedAsync(){
-            Console.WriteLine($"Player connected: {Context.ConnectionId}");
-            await base.OnConnectedAsync();
-            // Call the base method to ensure proper setup
+// Hub for real-time client-server communication
+public class GameHub : Hub
+{
+    private readonly RoomService _roomService;
+
+    public GameHub(RoomService roomService)
+    {
+        _roomService = roomService;
+    }
+
+    public override async Task OnConnectedAsync()
+    {
+        Console.WriteLine($"Player connected: {Context.ConnectionId}");
+        await base.OnConnectedAsync();
+    }
+
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        Console.WriteLine($"Player disconnected: {Context.ConnectionId}");
+        await base.OnDisconnectedAsync(exception);
+    }
+
+    public async Task Ping()
+    {
+        var message = _roomService.TestConnection();
+        Console.WriteLine($"Received Ping from {Context.ConnectionId}");
+        await Clients.Caller.SendAsync("Pong", message);
+    }
+
+    // Join a game room
+    public async Task JoinRoom(string roomId, string playerName)
+    {
+        // Step 1: Call RoomService to process room join
+        var result = _roomService.JoinRoom(roomId, Context.ConnectionId, playerName);
+
+        // Step 2: Handle failure case
+        if (!result.IsSuccess)
+        {
+            // Send error message only to caller
+            await Clients.Caller.SendAsync("Error", result.ErrorMessage);
+            return;
         }
 
-        public override async Task OnDisconnectedAsync(Exception? exception){
-            Console.WriteLine($"Player disconnected: {Context.ConnectionId}");
-            await base.OnDisconnectedAsync(exception); 
-        }
+        // Step 3: Add this connection to the SignalR group (by room ID)
+        // Now all messages sent to this group will reach this player
+        await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
 
-        public async Task Ping(){
-            var message = _roomService.TestConnection();
-            // Log the received message and the connection ID of the sender
-            Console.WriteLine($"Received Ping from {Context.ConnectionId}");
-            await Clients.Caller.SendAsync("Pong", message);
-            // Clients.Caller: 이 메서드를 호출한 클라이언트에게만 응답
-        }
-        // Leave it empty for now!
-        // TODO: Add functions like "create room", "send units" later.
+        // Step 4: Broadcast to all players in the room
+        // All users in the same group (room) will receive this message
+        await Clients.Group(roomId).SendAsync("PlayerJoined", playerName);
+
+        Console.WriteLine($"Player '{playerName}' joined room '{roomId}'");
     }
 }
