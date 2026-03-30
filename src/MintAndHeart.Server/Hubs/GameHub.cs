@@ -1,26 +1,21 @@
 using Microsoft.AspNetCore.SignalR;
 using MintAndHeart.Server.Services;
 
-namespace MintAndHeart.Server.Hubs
-{
+namespace MintAndHeart.Server.Hubs{
     // This class is the 'channel' that the client and server can communicate through
-    public class GameHub : Hub
-    {
+    public class GameHub : Hub{
         private readonly RoomService _roomService;
 
-        public GameHub(RoomService roomService)
-        {
+        public GameHub(RoomService roomService){
             _roomService = roomService;
         }
-        public override async Task OnConnectedAsync()
-        {
+        public override async Task OnConnectedAsync(){
             Console.WriteLine($"Player connected: {Context.ConnectionId}");
             await base.OnConnectedAsync();
             // Call the base method to ensure proper setup
         }
 
-        public override async Task OnDisconnectedAsync(Exception? exception)
-        {
+        public override async Task OnDisconnectedAsync(Exception? exception){
             Console.WriteLine($"Player disconnected: {Context.ConnectionId}");
             await base.OnDisconnectedAsync(exception); 
         }

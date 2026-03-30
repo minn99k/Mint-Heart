@@ -4,17 +4,13 @@ using MintAndHeart.Server.Services;
 
 namespace MintAndHeart.Server;
 
-public class Program
-{
-    public static void Main(string[] args)
-    {
+public class Program{
+    public static void Main(string[] args){
         var builder = WebApplication.CreateBuilder(args);
 
         // Add CORS policy: Define CORS rules for later use
-        builder.Services.AddCors(options =>
-        {
-            options.AddPolicy("AllowAll", policy =>
-            {
+        builder.Services.AddCors(options =>{
+            options.AddPolicy("AllowAll", policy =>{
                 policy.AllowAnyHeader() // Allow any header
                       .AllowAnyMethod() // Allow any method
                       .SetIsOriginAllowed(_ => true) // Allow any origin
@@ -51,8 +47,7 @@ public class Program
         // ASP.NET Core가 MapLoader를 자동으로 주입해줌 (DI)
         // Results.Ok(data)    → HTTP 200 + JSON 직렬화해서 응답
         // Results.NotFound()  → HTTP 404 응답
-        app.MapGet("/api/maps/{mapId}", (string mapId, MapLoader mapLoader) =>
-        {
+        app.MapGet("/api/maps/{mapId}", (string mapId, MapLoader mapLoader) =>{
             var map = mapLoader.GetMap(mapId);
             return map is null ? Results.NotFound() : Results.Ok(map);
         });
