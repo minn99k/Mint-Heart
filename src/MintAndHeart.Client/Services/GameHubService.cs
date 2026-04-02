@@ -2,30 +2,63 @@ using Microsoft.AspNetCore.SignalR.Client;
 
 namespace MintAndHeart.Client.Services;
 
-// This service is used to connect to the server and send/receive messages
-public class GameHubService{
-    // This is the connection to the server
+public class GameHubService
+{
+    // SignalR connection to server
     private readonly HubConnection _connection;
 
-
-    public GameHubService(string hubUrl){
-        _connection = new HubConnectionBuilder() // Build the connection to the server
-        .WithUrl(hubUrl) // Set the URL of the server
-        .WithAutomaticReconnect() // Automatically reconnect if the connection is lost
-        .Build(); // Build the connection
+    public GameHubService(string hubUrl)
+    {
+        _connection = new HubConnectionBuilder()
+            .WithUrl(hubUrl)
+            .WithAutomaticReconnect()
+            .Build();
     }
 
-    public async Task StartAsync(){
+    public async Task StartAsync()
+    {
         await _connection.StartAsync();
         Console.WriteLine("Connection started");
     }
 
-    public void OnPong(Action<string> handler){
-    _connection.On<string>("Pong", handler);
+    public void OnPong(Action<string> handler)
+    {
+        _connection.On<string>("Pong", handler);
     }
 
-// 서버의 Ping() 메서드를 호출
-    public async Task SendPingAsync(){
+    public void OnPlayerJoined(Action<string> handler)
+    {
+        // Listen for "PlayerJoined" message from server
+        // When a player joins, server sends: Clients.Group(roomId).SendAsync("PlayerJoined", nickname)
+        _connection.On<string>("PlayerJoined", handler);
+    }
+
+    public void OnError(Action<string> handler)
+    {
+        // Listen for "Error" message from server
+        // If join fails: Clients.Caller.SendAsync("Error", errorMessage)
+        _connection.On<string>("Error", handler);
+    }
+
+    // Send Ping message to server
+    public async Task SendPingAsync()
+    {
         await _connection.InvokeAsync("Ping");
-    }   
+    }
+
+    // Send JoinRoom request to server
+    // Usage: await gameHubService.JoinRoomAsync("1234", "철수");
+    public async Task JoinRoomAsync(string roomId, string nickname)
+    {
+        try
+        {
+            // Call server's JoinRoom method
+            // Server will respond with either "PlayerJoined" (success) or "Error" (failure)
+            await _connection.InvokeAsync("JoinRoom", roomId, nickname);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Join failed: {ex.Message}");
+        }
+    }
 }

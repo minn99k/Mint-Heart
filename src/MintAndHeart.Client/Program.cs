@@ -9,18 +9,19 @@ public class Program
     public static async Task Main(string[] args)
     {
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
-        // Add the GameHubService to the services
+        
+        // Register GameHubService as singleton
         builder.Services.AddSingleton(sp => new GameHubService(
-            builder.HostEnvironment.BaseAddress.TrimEnd('/') + "/gamehub")); // Pass the address directly to the GameHubService
-        // Singleton: Only one instance of the service is created and shared throughout the application
+            builder.HostEnvironment.BaseAddress.TrimEnd('/') + "/gamehub"));
 
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
 
-        builder.Services.AddScoped(sp => new HttpClient {
+        // Register HttpClient as scoped
+        builder.Services.AddScoped(sp => new HttpClient
+        {
             BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
-        }); // Add the HttpClient to the services
-        // Scoped: A new instance of the HttpClient is created for each request
+        });
 
         await builder.Build().RunAsync();
     }

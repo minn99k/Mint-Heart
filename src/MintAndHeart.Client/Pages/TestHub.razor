@@ -1,30 +1,80 @@
 @page "/testhub"
 @inject GameHubService gameHubService
 
-<h3>SignalR 연결 테스트</h3>
-<button @onclick="Connect">연결</button>
-<button @onclick="SendPing" disabled="@(!_connected)">Ping 보내기</button>
-<p>@_status</p>
+<h3>SignalR Test</h3>
+
+<div style="margin-bottom: 20px;">
+    <button @onclick="Connect" disabled="@_connected">Connect</button>
+    <p>Status: @_status</p>
+</div>
+
+<div style="margin-bottom: 20px; border: 1px solid #ccc; padding: 10px;">
+    <h4>Test Join Room</h4>
+    <input type="text" @bind="_roomId" placeholder="Room ID (e.g., 1234)" />
+    <input type="text" @bind="_nickname" placeholder="Nickname" />
+    <button @onclick="JoinRoom" disabled="@(!_connected)">Join Room</button>
+</div>
+
+<div style="border: 1px solid #ddd; padding: 10px; margin-top: 20px; min-height: 100px;">
+    <h4>Messages:</h4>
+    @foreach (var msg in _messages)
+    {
+        <p style="margin: 5px 0;">@msg</p>
+    }
+</div>
 
 @code {
     private string _status = "Not Connected";
     private bool _connected = false;
+    private string _roomId = "1234";
+    private string _nickname = "TestPlayer";
+    private List<string> _messages = new();
 
-    private async Task Connect(){
-        gameHubService.OnPong(message =>{
-            _status = $"Pong 받음: {message}";
-            StateHasChanged(); // UI 갱신을 수동으로 호출
-            // 왜 수동? → SignalR 콜백은 Blazor 외부에서 발생하는 이벤트라
-            // Blazor가 자동 감지 못 함. 버튼 클릭은 자동인데 이건 아님.
-        });
-    
-        await gameHubService.StartAsync();
-        _status = "연결됨!";
-        _connected = true;
-    }
-    private async Task SendPing()
+    private async Task Connect()
     {
-        await gameHubService.SendPingAsync();
-        _status = "Ping 보냄, Pong 대기 중...";
+        try
+        {
+            // Setup listeners BEFORE connecting
+            gameHubService.OnPlayerJoined(nickname =>
+            {
+                _messages.Add($"✅ {nickname} joined!");
+                StateHasChanged();
+            });
+
+            gameHubService.OnError(error =>
+            {
+                _messages.Add($"❌ Error: {error}");
+                StateHasChanged();
+            });
+
+            gameHubService.OnPong(message =>
+            {
+                _messages.Add($"📍 Pong: {message}");
+                StateHasChanged();
+            });
+
+            await gameHubService.StartAsync();
+            _status = "Connected!";
+            _connected = true;
+            _messages.Add("Connected to server");
+        }
+        catch (Exception ex)
+        {
+            _status = $"Connection failed: {ex.Message}";
+            _messages.Add($"💥 Connection error: {ex.Message}");
+        }
+    }
+
+    private async Task JoinRoom()
+    {
+        try
+        {
+            _messages.Add($"📤 Sending JoinRoom('{_roomId}', '{_nickname}')...");
+            await gameHubService.JoinRoomAsync(_roomId, _nickname);
+        }
+        catch (Exception ex)
+        {
+            _messages.Add($"💥 Join error: {ex.Message}");
+        }
     }
 }
