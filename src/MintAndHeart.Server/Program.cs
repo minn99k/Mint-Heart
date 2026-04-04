@@ -27,6 +27,8 @@ public class Program
         // Register singleton services (initialized at startup)
         builder.Services.AddSingleton<MapLoader>();
         builder.Services.AddSingleton<RoomService>();
+        builder.Services.AddSingleton<GameService>();
+        builder.Services.AddHostedService<GameLoopService>();
 
         var app = builder.Build();
 
