@@ -14,9 +14,12 @@ public class PlayerInfo
 {
     // SignalR connection ID
     public string ConnectionId { get; set; } = "";
-
+    public string PlayerId { get; set; } 
     // Player nickname
     public string Nickname { get; set; } = "";
+
+    public bool IsConnected { get; set; }
+    public DateTime? DisconnectedAt { get; set; }
 }
 
 // Game room information (shared between server and client)
