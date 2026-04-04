@@ -1,0 +1,136 @@
+@page "/"
+@inject GameHubService Hub
+@inject NavigationManager Nav
+@implements IDisposable
+
+<div class="lobby">
+    <h1>Capital Wars</h1>
+
+    <div class="nickname-section">
+        <label>닉네임 (최대 12자)</label>
+        <input maxlength="12" placeholder="닉네임 입력" @bind="_nickname" @bind:event="oninput" />
+    </div>
+
+    @if (_errorMessage != null)
+    {
+        <p class="error">@_errorMessage</p>
+    }
+
+    <div class="actions">
+        <!-- 방 만들기 -->
+        <button @onclick="CreateRoom" disabled="@(_loading || string.IsNullOrWhiteSpace(_nickname))">
+            방 만들기
+        </button>
+
+        <!-- 방 참가 -->
+        <div class="join-section">
+            <input maxlength="6" placeholder="방 코드 6자리" @bind="_roomCode" @bind:event="oninput" />
+            <button @onclick="JoinRoom" disabled="@(_loading || string.IsNullOrWhiteSpace(_nickname) || string.IsNullOrWhiteSpace(_roomCode))">
+                참가
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .lobby {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        gap: 20px;
+        font-family: sans-serif;
+    }
+    h1 { font-size: 2.5rem; margin-bottom: 8px; }
+    .nickname-section, .join-section {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    input {
+        padding: 10px 14px;
+        font-size: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        width: 240px;
+    }
+    .actions { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    button {
+        padding: 10px 28px;
+        font-size: 1rem;
+        border: none;
+        border-radius: 6px;
+        background: #4a90d9;
+        color: white;
+        cursor: pointer;
+        width: 100%;
+    }
+    button:disabled { background: #aaa; cursor: not-allowed; }
+    .join-section { flex-direction: row; gap: 8px; }
+    .join-section button { width: auto; }
+    .error { color: #e74c3c; font-size: 0.9rem; }
+</style>
+
+@code {
+    private string _nickname = "";
+    private string _roomCode = "";
+    private string? _errorMessage;
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Hub.OnRoomCreated  += HandleRoomCreated;
+        Hub.OnRoomJoined   += HandleRoomJoined;
+        Hub.OnError        += HandleError;
+
+        await Hub.EnsureConnectedAsync();
+    }
+
+    private async Task CreateRoom()
+    {
+        _errorMessage = null;
+        _loading = true;
+        await Hub.CreateRoomAsync("korea", _nickname.Trim());
+        _loading = false;
+    }
+
+    private async Task JoinRoom()
+    {
+        _errorMessage = null;
+        _loading = true;
+        await Hub.JoinRoomAsync(_roomCode.Trim(), _nickname.Trim());
+        _loading = false;
+    }
+
+    private void HandleRoomCreated(string roomId, string playerId)
+    {
+        Nav.NavigateTo($"/waiting/{roomId}");
+    }
+
+    private void HandleRoomJoined(string roomId, string playerId, string? opponentNickname)
+    {
+        Nav.NavigateTo($"/waiting/{roomId}");
+    }
+
+    private void HandleError(string errorCode)
+    {
+        _errorMessage = errorCode switch
+        {
+            "ROOM_NOT_FOUND"      => "방을 찾을 수 없습니다.",
+            "ROOM_FULL"           => "방이 꽉 찼습니다.",
+            "GAME_ALREADY_STARTED"=> "이미 게임이 시작된 방입니다.",
+            "NICKNAME_EMPTY"      => "닉네임을 입력하세요.",
+            "NICKNAME_TOO_LONG"   => "닉네임은 12자 이하로 입력하세요.",
+            _                    => $"오류가 발생했습니다. ({errorCode})"
+        };
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        Hub.OnRoomCreated -= HandleRoomCreated;
+        Hub.OnRoomJoined  -= HandleRoomJoined;
+        Hub.OnError       -= HandleError;
+    }
+}

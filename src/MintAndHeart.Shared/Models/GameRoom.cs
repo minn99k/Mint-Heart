@@ -1,48 +1,5 @@
-namespace MintAndHeart.Shared.Models;
-
-// Room status enum
-public enum RoomStatus
-{
-    Waiting,    // Waiting for another player to join
-    Starting,   // 2 players ready, game starting
-    InGame,     // Game in progress
-    Finished    // Game finished
-}
-
-// Player information in a room
-public class PlayerInfo
-{
-    // SignalR connection ID
-    public string ConnectionId { get; set; } = "";
-    public string PlayerId { get; set; } 
-    // Player nickname
-    public string Nickname { get; set; } = "";
-
-    public bool IsConnected { get; set; }
-    public DateTime? DisconnectedAt { get; set; }
-}
-
-// Game room information (shared between server and client)
-public class GameRoom
-{
-    // Unique room ID (room code)
-    public string RoomId { get; set; } = "";
-
-    // Current room status
-    public RoomStatus Status { get; set; } = RoomStatus.Waiting;
-
-    // Players in the room (Key: ConnectionId, Value: PlayerInfo)
-    public Dictionary<string, PlayerInfo> Players { get; set; } = new();
-
-    // Map ID to be played in this room
-    public string MapId { get; set; } = "";
-
-    // Room creation time
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    // Get number of players in room
-    public int PlayerCount => Players.Count;
-
-    // Check if room is full (max 2 players)
-    public bool IsFull => Players.Count >= 2;
-}
+// GameRoom, PlayerInfo, RoomStatus는 서버 전용이므로
+// MintAndHeart.Server.Models.GameModels 에 정의되어 있습니다.
+// Shared 프로젝트가 Server를 참조하면 순환 의존성이 발생하기 때문입니다.
+//
+// 클라이언트가 필요한 방/게임 정보는 DTOs/Dtos.cs 의 RoomInfoDto, GameStateDto 를 사용하세요.

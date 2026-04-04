@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(dotnet run:*)",
-      "Bash(\"d:/House/DEV/MintAndHeart/kill_server.bat\")"
+      "Bash(\"d:/House/DEV/MintAndHeart/kill_server.bat\")",
+      "Bash(powershell -Command \"Get-Process -Name 'MintAndHeart.Server' -ErrorAction SilentlyContinue | Stop-Process -Force\")"
     ]
   }
 }

@@ -1,0 +1,181 @@
+@page "/result"
+@inject GameHubService Hub
+@inject NavigationManager Nav
+@implements IDisposable
+
+<div class="result">
+    @if (_result == null)
+    {
+        <p>결과 로딩 중...</p>
+    }
+    else
+    {
+        <div class="outcome">
+            @if (_result.WinReason == "draw")
+            {
+                <span class="draw">무승부</span>
+            }
+            else if (_result.WinnerId == Hub.MyPlayerId)
+            {
+                <span class="win">승리! 🎉</span>
+            }
+            else
+            {
+                <span class="lose">패배...</span>
+            }
+        </div>
+
+        <div class="reason">
+            @(_result.WinReason switch {
+                "conquest"   => "상대 노드를 모두 점령했습니다.",
+                "timeout"    => "시간 종료 — 노드/유닛 수 비교",
+                "disconnect" => "상대방 연결이 끊겼습니다.",
+                "draw"       => "동률로 무승부입니다.",
+                _            => ""
+            })
+        </div>
+
+        <div class="stats">
+            <div class="stat-row header">
+                <span></span>
+                <span>🔵 @Hub.MyNickname</span>
+                <span>🔴 @Hub.OpponentNickname</span>
+            </div>
+            <div class="stat-row">
+                <span>노드 수</span>
+                <span>@(Hub.MyPlayerId == "player1" ? _result.Player1Nodes : _result.Player2Nodes)</span>
+                <span>@(Hub.MyPlayerId == "player1" ? _result.Player2Nodes : _result.Player1Nodes)</span>
+            </div>
+            <div class="stat-row">
+                <span>유닛 수</span>
+                <span>@(Hub.MyPlayerId == "player1" ? _result.Player1Units : _result.Player2Units)</span>
+                <span>@(Hub.MyPlayerId == "player1" ? _result.Player2Units : _result.Player1Units)</span>
+            </div>
+            <div class="stat-row">
+                <span>플레이 시간</span>
+                <span colspan="2">@FormatTime(_result.DurationSeconds)</span>
+            </div>
+        </div>
+
+        <!-- 최종 맵 스냅샷 (간단한 SVG) -->
+        <svg viewBox="0 0 800 600" class="final-map">
+            @foreach (var node in _result.FinalNodes)
+            {
+                var info = GetNodeInfo(node.NodeId);
+                var fill = node.OwnerId == Hub.MyPlayerId ? "#3B82F6"
+                         : node.OwnerId == null           ? "#6B7280"
+                                                          : "#EF4444";
+                var cx    = info.x.ToString("F0");
+                var cy    = info.y.ToString("F0");
+                var unitY = (info.y + 5).ToString("F0");
+                var lblY  = (info.y + 38).ToString("F0");
+                <MapNodeSvg Cx="@cx" Cy="@cy" UnitY="@unitY" LabelY="@lblY"
+                            Fill="@fill" Name="@info.name" Units="@node.Units" />
+            }
+        </svg>
+
+        <div class="buttons">
+            <button @onclick="GoLobby">로비로</button>
+        </div>
+    }
+</div>
+
+<style>
+    body { margin:0; background:#1a1a2e; color:white; font-family:sans-serif; }
+    .result {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        gap: 24px;
+        padding: 20px;
+    }
+    .outcome { font-size: 3rem; font-weight: bold; }
+    .win   { color: #60A5FA; }
+    .lose  { color: #F87171; }
+    .draw  { color: #FBBF24; }
+    .reason { color: #9CA3AF; font-size: 0.95rem; }
+    .stats {
+        border: 1px solid #374151;
+        border-radius: 8px;
+        overflow: hidden;
+        width: 360px;
+    }
+    .stat-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        padding: 10px 16px;
+        border-bottom: 1px solid #374151;
+        text-align: center;
+        font-size: 0.95rem;
+    }
+    .stat-row.header { background: #374151; font-weight: bold; }
+    .stat-row:last-child { border-bottom: none; }
+    .final-map {
+        width: min(100%, 480px);
+        height: auto;
+        background: #16213e;
+        border: 1px solid #333;
+        border-radius: 8px;
+    }
+    .buttons { display: flex; gap: 12px; }
+    button {
+        padding: 10px 28px;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        cursor: pointer;
+        background: #4B5563;
+        color: white;
+    }
+    button:hover { background: #6B7280; }
+</style>
+
+@code {
+    private MintAndHeart.Shared.DTOs.GameResultDto? _result;
+
+    private static readonly Dictionary<string, (double x, double y, string name)> _nodeInfo = new()
+    {
+        ["seoul"]     = (300, 150, "서울"),
+        ["incheon"]   = (180, 170, "인천"),
+        ["chuncheon"] = (350,  80, "춘천"),
+        ["gangneung"] = (550,  90, "강릉"),
+        ["cheongju"]  = (350, 250, "청주"),
+        ["daejeon"]   = (280, 350, "대전"),
+        ["jeonju"]    = (220, 400, "전주"),
+        ["gwangju"]   = (200, 490, "광주"),
+        ["daegu"]     = (500, 350, "대구"),
+        ["ulsan"]     = (600, 380, "울산"),
+        ["busan"]     = (550, 480, "부산"),
+        ["jeju"]      = (200, 580, "제주"),
+    };
+
+    protected override void OnInitialized()
+    {
+        Hub.OnGameOver += HandleGameOver;
+
+        // 이미 결과가 도착해 있으면 (페이지 전환 타이밍 차이)
+        if (Hub.LastGameResult != null)
+            _result = Hub.LastGameResult;
+    }
+
+    private void HandleGameOver(MintAndHeart.Shared.DTOs.GameResultDto result)
+    {
+        _result = result;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void GoLobby() => Nav.NavigateTo("/");
+
+    private static (double x, double y, string name) GetNodeInfo(string nodeId) =>
+        _nodeInfo.TryGetValue(nodeId, out var info) ? info : (0, 0, nodeId);
+
+    private static string FormatTime(int seconds)
+    {
+        int m = seconds / 60, s = seconds % 60;
+        return $"{m}:{s:D2}";
+    }
+
+    public void Dispose() => Hub.OnGameOver -= HandleGameOver;
+}

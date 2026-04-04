@@ -1,5 +1,6 @@
 @page "/testhub"
-@inject GameHubService gameHubService
+@inject GameHubService Hub
+@implements IDisposable
 
 <h3>SignalR Test</h3>
 
@@ -9,10 +10,16 @@
 </div>
 
 <div style="margin-bottom: 20px; border: 1px solid #ccc; padding: 10px;">
-    <h4>Test Join Room</h4>
-    <input type="text" @bind="_roomId" placeholder="Room ID (e.g., 1234)" />
-    <input type="text" @bind="_nickname" placeholder="Nickname" />
-    <button @onclick="JoinRoom" disabled="@(!_connected)">Join Room</button>
+    <h4>Test: 방 만들기</h4>
+    <input type="text" @bind="_nickname" placeholder="닉네임" />
+    <button @onclick="CreateRoom" disabled="@(!_connected)">방 만들기</button>
+</div>
+
+<div style="margin-bottom: 20px; border: 1px solid #ccc; padding: 10px;">
+    <h4>Test: 방 참가</h4>
+    <input type="text" @bind="_roomId" placeholder="방 코드" />
+    <input type="text" @bind="_nickname" placeholder="닉네임" />
+    <button @onclick="JoinRoom" disabled="@(!_connected)">참가</button>
 </div>
 
 <div style="border: 1px solid #ddd; padding: 10px; margin-top: 20px; min-height: 100px;">
@@ -24,57 +31,65 @@
 </div>
 
 @code {
-    private string _status = "Not Connected";
-    private bool _connected = false;
-    private string _roomId = "1234";
+    private string _status   = "Not Connected";
+    private bool   _connected;
+    private string _roomId   = "";
     private string _nickname = "TestPlayer";
     private List<string> _messages = new();
+
+    protected override void OnInitialized()
+    {
+        Hub.OnRoomCreated      += (roomId, pid)       => Log($"✅ RoomCreated: {roomId} as {pid}");
+        Hub.OnRoomJoined       += (roomId, pid, opp)  => Log($"✅ RoomJoined: {roomId} as {pid}, opponent: {opp}");
+        Hub.OnPlayerJoined     += nickname            => Log($"👤 PlayerJoined: {nickname}");
+        Hub.OnCountdownStarted += seconds             => Log($"⏱ CountdownStarted: {seconds}s");
+        Hub.OnGameStarted      += (dto, pid)           => Log($"🎮 GameStarted! as {pid}");
+        Hub.OnPlayerLeft       += nickname            => Log($"👋 PlayerLeft: {nickname}");
+        Hub.OnError            += code               => Log($"❌ Error: {code}");
+    }
 
     private async Task Connect()
     {
         try
         {
-            // Setup listeners BEFORE connecting
-            gameHubService.OnPlayerJoined(nickname =>
-            {
-                _messages.Add($"✅ {nickname} joined!");
-                StateHasChanged();
-            });
-
-            gameHubService.OnError(error =>
-            {
-                _messages.Add($"❌ Error: {error}");
-                StateHasChanged();
-            });
-
-            gameHubService.OnPong(message =>
-            {
-                _messages.Add($"📍 Pong: {message}");
-                StateHasChanged();
-            });
-
-            await gameHubService.StartAsync();
-            _status = "Connected!";
+            await Hub.EnsureConnectedAsync();
+            _status    = "Connected!";
             _connected = true;
-            _messages.Add("Connected to server");
+            Log("Connected to server");
         }
         catch (Exception ex)
         {
             _status = $"Connection failed: {ex.Message}";
-            _messages.Add($"💥 Connection error: {ex.Message}");
+            Log($"💥 {ex.Message}");
         }
+    }
+
+    private async Task CreateRoom()
+    {
+        Log($"📤 CreateRoom(korea, '{_nickname}')...");
+        await Hub.CreateRoomAsync("korea", _nickname);
     }
 
     private async Task JoinRoom()
     {
-        try
-        {
-            _messages.Add($"📤 Sending JoinRoom('{_roomId}', '{_nickname}')...");
-            await gameHubService.JoinRoomAsync(_roomId, _nickname);
-        }
-        catch (Exception ex)
-        {
-            _messages.Add($"💥 Join error: {ex.Message}");
-        }
+        Log($"📤 JoinRoom('{_roomId}', '{_nickname}')...");
+        await Hub.JoinRoomAsync(_roomId, _nickname);
+    }
+
+    private void Log(string msg)
+    {
+        _messages.Add(msg);
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Hub.OnRoomCreated      -= (roomId, pid)      => Log($"✅ RoomCreated: {roomId} as {pid}");
+        Hub.OnRoomJoined       -= (roomId, pid, opp) => Log($"✅ RoomJoined: {roomId} as {pid}, opponent: {opp}");
+        Hub.OnPlayerJoined     -= nickname           => Log($"👤 PlayerJoined: {nickname}");
+        Hub.OnCountdownStarted -= seconds            => Log($"⏱ CountdownStarted: {seconds}s");
+        Hub.OnGameStarted      -= (dto, pid)          => Log($"🎮 GameStarted! as {pid}");
+        Hub.OnPlayerLeft       -= nickname           => Log($"👋 PlayerLeft: {nickname}");
+        Hub.OnError            -= code              => Log($"❌ Error: {code}");
     }
 }

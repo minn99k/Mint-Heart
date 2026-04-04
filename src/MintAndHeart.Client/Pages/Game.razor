@@ -1,0 +1,263 @@
+@page "/game"
+@inject GameHubService Hub
+@inject NavigationManager Nav
+@implements IDisposable
+
+@if (_state == null)
+{
+    <div class="center-screen"><p>게임 데이터 로딩 중...</p></div>
+}
+else
+{
+    <!-- HUD -->
+    <div class="hud">
+        <span class="hud-player p1">
+            🔵 @Hub.MyNickname &nbsp;
+            @(_myPlayerId == "player1" ? _state.Player1NodeCount : _state.Player2NodeCount)노드 /
+            @(_myPlayerId == "player1" ? _state.Player1TotalUnits : _state.Player2TotalUnits)유닛
+        </span>
+        <span class="hud-timer">⏱ @FormatTime(_state.ElapsedSeconds)</span>
+        <span class="hud-player p2">
+            🔴 @Hub.OpponentNickname &nbsp;
+            @(_myPlayerId == "player1" ? _state.Player2NodeCount : _state.Player1NodeCount)노드 /
+            @(_myPlayerId == "player1" ? _state.Player2TotalUnits : _state.Player1TotalUnits)유닛
+        </span>
+    </div>
+
+    <!-- SVG 맵 -->
+    <div class="map-container">
+        <svg viewBox="0 0 800 600" class="game-map">
+
+            <!-- 전송 라인 (활성 전송 명령 시각화) -->
+            @foreach (var t in _state.ActiveTransfers)
+            {
+                var fromNode = _state.Nodes.FirstOrDefault(n => n.NodeId == t.FromNodeId);
+                var toNode   = _state.Nodes.FirstOrDefault(n => n.NodeId == t.ToNodeId);
+                if (fromNode != null && toNode != null)
+                {
+                    var nodeCoord = GetNodeCoord(t.FromNodeId);
+                    var toCoord   = GetNodeCoord(t.ToNodeId);
+                    <line x1="@nodeCoord.x" y1="@nodeCoord.y"
+                          x2="@toCoord.x"   y2="@toCoord.y"
+                          stroke="@(t.OwnerId == _myPlayerId ? "#3B82F6" : "#EF4444")"
+                          stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5" />
+                }
+            }
+
+            <!-- 이동 중 유닛 -->
+            @foreach (var u in _state.MovingUnits)
+            {
+                var fill = u.OwnerId == _myPlayerId ? "#3B82F6" : "#EF4444";
+                <circle cx="@u.CurrentX.ToString("F1")" cy="@u.CurrentY.ToString("F1")"
+                        r="5" fill="@fill" opacity="0.85" />
+            }
+
+            <!-- 노드 -->
+            @foreach (var node in _state.Nodes)
+            {
+                var coord    = GetNodeCoord(node.NodeId);
+                var fill     = GetNodeFill(node.OwnerId);
+                var isSelected = _selectedNodeId == node.NodeId;
+                var cx       = coord.x.ToString("F0");
+                var cy       = coord.y.ToString("F0");
+                var unitY    = (coord.y + 5).ToString("F0");
+                var labelY   = (coord.y + 38).ToString("F0");
+                var stroke   = isSelected ? "#FFD700" : "#333";
+                var sw       = isSelected ? "3" : "1.5";
+
+                <g @onclick="() => OnNodeClick(node.NodeId)" style="cursor:pointer">
+                    <circle cx="@cx" cy="@cy" r="22"
+                            fill="@fill" stroke="@stroke" stroke-width="@sw" />
+                    <MapNodeSvg Cx="@cx" Cy="@cy" UnitY="@unitY" LabelY="@labelY"
+                                Fill="@fill" Name="@GetNodeName(node.NodeId)" Units="@node.Units" />
+                </g>
+            }
+        </svg>
+    </div>
+
+    @if (_errorMsg != null)
+    {
+        <div class="error-toast">@_errorMsg</div>
+    }
+}
+
+<style>
+    body { margin: 0; font-family: sans-serif; background: #1a1a2e; color: white; }
+    .center-screen { display:flex; align-items:center; justify-content:center; min-height:100vh; }
+    .hud {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 20px;
+        background: rgba(0,0,0,0.6);
+        font-size: 0.95rem;
+    }
+    .hud-player { min-width: 200px; }
+    .hud-timer  { font-size: 1.2rem; font-weight: bold; }
+    .p1 { color: #60A5FA; }
+    .p2 { color: #F87171; text-align: right; }
+    .map-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: calc(100vh - 50px);
+    }
+    .game-map {
+        width: min(100vw, calc(100vh - 50px) * 800 / 600);
+        height: auto;
+        background: #16213e;
+        border: 1px solid #333;
+    }
+    .error-toast {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #EF4444;
+        color: white;
+        padding: 8px 20px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+    }
+</style>
+
+@code {
+    private MintAndHeart.Shared.DTOs.GameStateDto? _state;
+    private string _myPlayerId   = "";
+    private string? _selectedNodeId;
+    private string? _errorMsg;
+    private System.Threading.Timer? _errorTimer;
+
+    // 맵 좌표 캐시 (서버 korea.json 기준)
+    private static readonly Dictionary<string, (double x, double y, string name)> _nodeInfo = new()
+    {
+        ["seoul"]     = (300, 150, "서울"),
+        ["incheon"]   = (180, 170, "인천"),
+        ["chuncheon"] = (350,  80, "춘천"),
+        ["gangneung"] = (550,  90, "강릉"),
+        ["cheongju"]  = (350, 250, "청주"),
+        ["daejeon"]   = (280, 350, "대전"),
+        ["jeonju"]    = (220, 400, "전주"),
+        ["gwangju"]   = (200, 490, "광주"),
+        ["daegu"]     = (500, 350, "대구"),
+        ["ulsan"]     = (600, 380, "울산"),
+        ["busan"]     = (550, 480, "부산"),
+        ["jeju"]      = (200, 580, "제주"),
+    };
+
+    protected override void OnInitialized()
+    {
+        Hub.OnGameStarted      += HandleGameStarted;
+        Hub.OnGameStateUpdated += HandleStateUpdated;
+        Hub.OnGameOver         += HandleGameOver;
+        Hub.OnError            += HandleError;
+
+        // 이미 상태가 있으면 바로 사용 (Waiting → Game 전환 시)
+        if (Hub.LastGameState != null)
+        {
+            _state      = Hub.LastGameState;
+            _myPlayerId = Hub.MyPlayerId;
+        }
+    }
+
+    private void HandleGameStarted(MintAndHeart.Shared.DTOs.GameStateDto dto, string myPlayerId)
+    {
+        _state      = dto;
+        _myPlayerId = myPlayerId;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleStateUpdated(MintAndHeart.Shared.DTOs.GameStateDto dto)
+    {
+        _state = dto;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleGameOver(MintAndHeart.Shared.DTOs.GameResultDto result)
+    {
+        Nav.NavigateTo($"/result");
+    }
+
+    private void HandleError(string code)
+    {
+        _errorMsg = code switch
+        {
+            "NOT_YOUR_NODE"      => "내 노드가 아닙니다.",
+            "SELF_TRANSFER"      => "자기 자신에게 전송할 수 없습니다.",
+            "DUPLICATE_TRANSFER" => "이미 전송 중입니다.",
+            "MAX_TRANSFERS"      => "노드당 최대 3개까지 전송 가능합니다.",
+            "TRANSFER_NOT_FOUND" => "해당 전송을 찾을 수 없습니다.",
+            _ => code
+        };
+        _errorTimer?.Dispose();
+        _errorTimer = new System.Threading.Timer(_ =>
+        {
+            _errorMsg = null;
+            InvokeAsync(StateHasChanged);
+        }, null, 2500, System.Threading.Timeout.Infinite);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnNodeClick(string nodeId)
+    {
+        if (_state == null) return;
+
+        if (_selectedNodeId == null)
+        {
+            // 선택 — 내 노드만 가능
+            var node = _state.Nodes.FirstOrDefault(n => n.NodeId == nodeId);
+            if (node?.OwnerId == _myPlayerId)
+                _selectedNodeId = nodeId;
+        }
+        else if (_selectedNodeId == nodeId)
+        {
+            // 같은 노드 재클릭 → 선택 해제
+            _selectedNodeId = null;
+        }
+        else
+        {
+            // 다른 노드 클릭 → 전송 시작 or 중단
+            var from = _selectedNodeId;
+            var to   = nodeId;
+
+            bool alreadyTransferring = _state.ActiveTransfers
+                .Any(t => t.OwnerId == _myPlayerId && t.FromNodeId == from && t.ToNodeId == to);
+
+            if (alreadyTransferring)
+                await Hub.StopTransferAsync(from, to);
+            else
+                await Hub.StartTransferAsync(from, to);
+
+            _selectedNodeId = null;
+        }
+    }
+
+    private (double x, double y) GetNodeCoord(string nodeId) =>
+        _nodeInfo.TryGetValue(nodeId, out var info) ? (info.x, info.y) : (0, 0);
+
+    private string GetNodeName(string nodeId) =>
+        _nodeInfo.TryGetValue(nodeId, out var info) ? info.name : nodeId;
+
+    private string GetNodeFill(string? ownerId) => ownerId switch
+    {
+        "player1" => _myPlayerId == "player1" ? "#3B82F6" : "#EF4444",
+        "player2" => _myPlayerId == "player2" ? "#3B82F6" : "#EF4444",
+        _         => "#6B7280"  // 중립
+    };
+
+    private static string FormatTime(int seconds)
+    {
+        int m = seconds / 60;
+        int s = seconds % 60;
+        return $"{m}:{s:D2}";
+    }
+
+    public void Dispose()
+    {
+        _errorTimer?.Dispose();
+        Hub.OnGameStarted      -= HandleGameStarted;
+        Hub.OnGameStateUpdated -= HandleStateUpdated;
+        Hub.OnGameOver         -= HandleGameOver;
+        Hub.OnError            -= HandleError;
+    }
+}
